@@ -1,0 +1,48 @@
+services:
+  backend:
+    build:
+      context: ./backend
+    container_name: monad-backend
+    ports:
+      - "${BACKEND_PORT:-8000}:8000"
+    env_file:
+      - .env
+    volumes:
+      - ./backend:/app
+      - ./shared:/shared
+    environment:
+      UVICORN_RELOAD: "true"
+      WATCHFILES_FORCE_POLLING: "true"
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload --reload-dir /app/app
+
+  frontend:
+    build:
+      context: ./frontend
+    container_name: monad-frontend
+    ports:
+      - "${FRONTEND_PORT:-3000}:3000"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    depends_on:
+      - backend
+    environment:
+      VITE_BACKEND_PORT: "${BACKEND_PORT:-8001}"
+      VITE_CONTRACTS_PORT: "${CONTRACTS_PORT:-8546}"
+      CHOKIDAR_USEPOLLING: "true"
+      WATCHPACK_POLLING: "true"
+    command: npm run dev -- --host 0.0.0.0 --port 3000
+
+  contracts:
+    build:
+      context: ./contracts
+    container_name: monad-contracts
+    ports:
+      - "${CONTRACTS_PORT:-8545}:8545"
+    volumes:
+      - ./contracts:/app
+      - ./shared:/shared
+      - /app/node_modules
+    env_file:
+      - .env
+    command: npx hardhat node --hostname 0.0.0.0
